@@ -10,9 +10,9 @@ import (
 )
 
 type Data struct {
-	Title string
+	Title    string
 	Subtitle string
-	Body string
+	Body     string
 }
 
 func main() {
@@ -22,33 +22,18 @@ func main() {
 	}
 	defer templateReader.Close()
 
-	var templateFile *zip.File
-	for _, f := range templateReader.File {
-		if f.Name == "word/document.xml" {
-			templateFile = f
-		}
-	}
-	if templateFile == nil {
-		log.Fatalf("word file not found")
-	}
-
-	docReader, err := templateFile.Open()
-	if err != nil {
-		log.Fatalf("cannot open document.xml: %s", err.Error())
-	}
-	defer docReader.Close()
-
-	b, err := ioutil.ReadAll(docReader)
-	if err != nil {
-		log.Fatalf("cannot read document.xml: %s", err.Error())
-	}
-	templateStr := string(b)
-
+	templateStr := getTemplateString(templateReader, err)
 	tpl, err := template.New("template").Parse(templateStr)
 	if err != nil {
 		log.Fatalf("cannot parse template file: %s", err.Error())
 	}
 
+	generateDoc(templateReader, tpl)
+
+	log.Println("Success!")
+}
+
+func generateDoc(templateReader *zip.ReadCloser, tpl *template.Template) {
 	resultFile, err := os.Create("result.docx")
 	if err != nil {
 		log.Fatalf("cannot create result file: %s", err.Error())
@@ -83,6 +68,29 @@ func main() {
 			}
 		}
 	}
+}
 
-	log.Println("Success!")
+func getTemplateString(templateReader *zip.ReadCloser, err error) string {
+	var templateFile *zip.File
+	for _, f := range templateReader.File {
+		if f.Name == "word/document.xml" {
+			templateFile = f
+		}
+	}
+	if templateFile == nil {
+		log.Fatalf("word file not found")
+	}
+
+	docReader, err := templateFile.Open()
+	if err != nil {
+		log.Fatalf("cannot open document.xml: %s", err.Error())
+	}
+	defer docReader.Close()
+
+	b, err := ioutil.ReadAll(docReader)
+	if err != nil {
+		log.Fatalf("cannot read document.xml: %s", err.Error())
+	}
+	templateStr := string(b)
+	return templateStr
 }
